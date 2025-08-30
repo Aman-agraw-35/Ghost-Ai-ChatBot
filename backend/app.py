@@ -1,3 +1,4 @@
+#pip install langchain langchain-core langchain-community langgraph langchain-google-genai tavily-python fastapi uvicorn python-dotenv starlette
 from typing import TypedDict, Annotated, Optional
 from langgraph.graph import add_messages, StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -84,3 +85,15 @@ graph_builder.add_conditional_edges("model", tools_router)
 graph_builder.add_edge("tool_node", "model")
 
 graph = graph_builder.compile(checkpointer=memory)
+
+app = FastAPI()
+
+# Add CORS middleware with settings that match frontend requirements
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=True,
+    allow_methods=["*"],  
+    allow_headers=["*"], 
+    expose_headers=["Content-Type"], 
+)
