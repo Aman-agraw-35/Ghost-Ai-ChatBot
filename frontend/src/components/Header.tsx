@@ -2,7 +2,7 @@ import { Ghost } from "lucide-react"; // ghost icon
 
 const Header = () => {
     return (
-        <header className="relative flex items-center justify-between px-8 py-5 bg-gradient-to-r from-[#4A31] to-[#5E5] shadow-lg z-10">
+        <header className="relative flex items-center justify-between px-8 py-5 bg-gradient-to-r from-[#4A36] to-[#5E5] shadow-lg z-10">
             {/* Subtle overlay texture */}
             <div className="absolute inset-0 bg-[url('/api/placeholder/100/100')] opacity-5 mix-blend-overlay"></div>
             <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
@@ -17,7 +17,7 @@ const Header = () => {
 
             {/* Navigation */}
             <nav className="flex items-center space-x-2">
-                {["HOME", "CHAT", "CONTACTS", "SETTINGS"].map((item, idx) => (
+                {["HOME", "CHAT", "SETTINGS"].map((item, idx) => (
                     <a
                         key={idx}
                         className={`text-xs px-4 py-2 font-medium rounded-lg transition-all duration-300 cursor-pointer ${
