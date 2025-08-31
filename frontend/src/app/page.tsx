@@ -1,9 +1,9 @@
-"use client";
+"use client"
 
-import Header from "@/components/Header";
-import InputBar from "@/components/InputBar";
-import MessageArea from "@/components/MessageArea";
-import React, { useState } from "react";
+import Header from '@/components/Header';
+import InputBar from '@/components/InputBar';
+import MessageArea from '@/components/MessageArea';
+import React, { useState } from 'react';
 
 interface SearchInfo {
   stages: string[];
@@ -24,167 +24,159 @@ const Home = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      content: "Hi there, how can I help you?",
+      content: 'Hi there, how can I help you?',
       isUser: false,
-      type: "message",
-    },
+      type: 'message'
+    }
   ]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [checkpointId, setCheckpointId] = useState(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (currentMessage.trim()) {
-      const newMessageId =
-        messages.length > 0
-          ? Math.max(...messages.map((msg) => msg.id)) + 1
-          : 1;
+      // First add the user message to the chat
+      const newMessageId = messages.length > 0 ? Math.max(...messages.map(msg => msg.id)) + 1 : 1;
 
-      setMessages((prev) => [
+      setMessages(prev => [
         ...prev,
         {
           id: newMessageId,
           content: currentMessage,
           isUser: true,
-          type: "message",
-        },
+          type: 'message'
+        }
       ]);
 
       const userInput = currentMessage;
-      setCurrentMessage("");
+      setCurrentMessage(""); // Clear input field immediately
 
       try {
+        // Create AI response placeholder
         const aiResponseId = newMessageId + 1;
-        setMessages((prev) => [
+        setMessages(prev => [
           ...prev,
           {
             id: aiResponseId,
             content: "",
             isUser: false,
-            type: "message",
+            type: 'message',
             isLoading: true,
             searchInfo: {
               stages: [],
               query: "",
-              urls: [],
-            },
-          },
+              urls: []
+            }
+          }
         ]);
 
-        let url = `http://127.0.0.1:8000/chat_stream/${encodeURIComponent(
-          userInput
-        )}`;
+        // Create URL with checkpoint ID if it exists
+        let url = `http://127.0.0.1:8000/chat_stream/${encodeURIComponent(userInput)}`;
         if (checkpointId) {
           url += `?checkpoint_id=${encodeURIComponent(checkpointId)}`;
         }
 
+        // Connect to SSE endpoint using EventSource
         const eventSource = new EventSource(url);
         let streamedContent = "";
-        let searchData: any = null;
+        let searchData = null;
+        let hasReceivedContent = false;
 
+        // Process incoming messages
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
 
-            if (data.type === "checkpoint") {
+            if (data.type === 'checkpoint') {
+              // Store the checkpoint ID for future requests
               setCheckpointId(data.checkpoint_id);
-            } else if (data.type === "content") {
+            }
+            else if (data.type === 'content') {
               streamedContent += data.content;
+              hasReceivedContent = true;
 
-              setMessages((prev) =>
-                prev.map((msg) =>
+              // Update message with accumulated content
+              setMessages(prev =>
+                prev.map(msg =>
                   msg.id === aiResponseId
                     ? { ...msg, content: streamedContent, isLoading: false }
                     : msg
                 )
               );
-            } else if (data.type === "search_start") {
+            }
+            else if (data.type === 'search_start') {
+              // Create search info with 'searching' stage
               const newSearchInfo = {
-                stages: ["searching"],
+                stages: ['searching'],
                 query: data.query,
-                urls: [],
+                urls: []
               };
               searchData = newSearchInfo;
 
-              setMessages((prev) =>
-                prev.map((msg) =>
+              // Update the AI message with search info
+              setMessages(prev =>
+                prev.map(msg =>
                   msg.id === aiResponseId
-                    ? {
-                        ...msg,
-                        content: streamedContent,
-                        searchInfo: newSearchInfo,
-                        isLoading: false,
-                      }
+                    ? { ...msg, content: streamedContent, searchInfo: newSearchInfo, isLoading: false }
                     : msg
                 )
               );
-            } else if (data.type === "search_results") {
+            }
+            else if (data.type === 'search_results') {
               try {
-                const urls =
-                  typeof data.urls === "string"
-                    ? JSON.parse(data.urls)
-                    : data.urls;
+                // Parse URLs from search results
+                const urls = typeof data.urls === 'string' ? JSON.parse(data.urls) : data.urls;
 
+                // Update search info to add 'reading' stage (don't replace 'searching')
                 const newSearchInfo = {
-                  stages: searchData
-                    ? [...searchData.stages, "reading"]
-                    : ["reading"],
+                  stages: searchData ? [...searchData.stages, 'reading'] : ['reading'],
                   query: searchData?.query || "",
-                  urls: urls,
+                  urls: urls
                 };
                 searchData = newSearchInfo;
 
-                setMessages((prev) =>
-                  prev.map((msg) =>
+                // Update the AI message with search info
+                setMessages(prev =>
+                  prev.map(msg =>
                     msg.id === aiResponseId
-                      ? {
-                          ...msg,
-                          content: streamedContent,
-                          searchInfo: newSearchInfo,
-                          isLoading: false,
-                        }
+                      ? { ...msg, content: streamedContent, searchInfo: newSearchInfo, isLoading: false }
                       : msg
                   )
                 );
               } catch (err) {
                 console.error("Error parsing search results:", err);
               }
-            } else if (data.type === "search_error") {
+            }
+            else if (data.type === 'search_error') {
+              // Handle search error
               const newSearchInfo = {
-                stages: searchData ? [...searchData.stages, "error"] : ["error"],
+                stages: searchData ? [...searchData.stages, 'error'] : ['error'],
                 query: searchData?.query || "",
                 error: data.error,
-                urls: [],
+                urls: []
               };
               searchData = newSearchInfo;
 
-              setMessages((prev) =>
-                prev.map((msg) =>
+              setMessages(prev =>
+                prev.map(msg =>
                   msg.id === aiResponseId
-                    ? {
-                        ...msg,
-                        content: streamedContent,
-                        searchInfo: newSearchInfo,
-                        isLoading: false,
-                      }
+                    ? { ...msg, content: streamedContent, searchInfo: newSearchInfo, isLoading: false }
                     : msg
                 )
               );
-            } else if (data.type === "end") {
+            }
+            else if (data.type === 'end') {
+              // When stream ends, add 'writing' stage if we had search info
               if (searchData) {
                 const finalSearchInfo = {
                   ...searchData,
-                  stages: [...searchData.stages, "writing"],
+                  stages: [...searchData.stages, 'writing']
                 };
 
-                setMessages((prev) =>
-                  prev.map((msg) =>
+                setMessages(prev =>
+                  prev.map(msg =>
                     msg.id === aiResponseId
-                      ? {
-                          ...msg,
-                          searchInfo: finalSearchInfo,
-                          isLoading: false,
-                        }
+                      ? { ...msg, searchInfo: finalSearchInfo, isLoading: false }
                       : msg
                   )
                 );
@@ -197,40 +189,38 @@ const Home = () => {
           }
         };
 
+        // Handle errors
         eventSource.onerror = (error) => {
           console.error("EventSource error:", error);
           eventSource.close();
 
+          // Only update with error if we don't have content yet
           if (!streamedContent) {
-            setMessages((prev) =>
-              prev.map((msg) =>
+            setMessages(prev =>
+              prev.map(msg =>
                 msg.id === aiResponseId
-                  ? {
-                      ...msg,
-                      content:
-                        "Sorry, there was an error processing your request.",
-                      isLoading: false,
-                    }
+                  ? { ...msg, content: "Sorry, there was an error processing your request.", isLoading: false }
                   : msg
               )
             );
           }
         };
 
-        eventSource.addEventListener("end", () => {
+        // Listen for end event
+        eventSource.addEventListener('end', () => {
           eventSource.close();
         });
       } catch (error) {
         console.error("Error setting up EventSource:", error);
-        setMessages((prev) => [
+        setMessages(prev => [
           ...prev,
           {
             id: newMessageId + 1,
             content: "Sorry, there was an error connecting to the server.",
             isUser: false,
-            type: "message",
-            isLoading: false,
-          },
+            type: 'message',
+            isLoading: false
+          }
         ]);
       }
     }

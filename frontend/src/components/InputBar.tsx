@@ -49,7 +49,7 @@ const InputBar = ({ currentMessage, setCurrentMessage, onSubmit }) => {
         {/* Input */}
         <input
           type="text"
-          placeholder="Type a message..."
+          placeholder="Type a message master..."
           value={currentMessage}
           onChange={handleChange}
           className="flex-grow px-4 py-2 bg-transparent focus:outline-none text-gray-700"
