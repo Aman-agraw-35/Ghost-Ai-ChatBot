@@ -1,0 +1,7 @@
+__pycache__/
+venv/
+.git/
+.gitignore
+.ipynb_checkpoints/
+*.ipynb
+README.md
