@@ -1,9 +1,10 @@
-"use client"
+"use client";
 
-import Header from '@/components/Header';
-import InputBar from '@/components/InputBar';
-import MessageArea from '@/components/MessageArea';
-import React, { useState } from 'react';
+import Header from "@/components/Header";
+import InputBar from "@/components/InputBar";
+import MessageArea from "@/components/MessageArea";
+import React, { useState, useEffect } from "react";
+import Sidebar from "@/components/Sidebar";
 
 interface SearchInfo {
   stages: string[];
@@ -20,218 +21,218 @@ interface Message {
   searchInfo?: SearchInfo;
 }
 
+interface Conversation {
+  threadId: string;
+  title: string;
+  createdAt: string;
+}
+
 const Home = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      content: 'Hi there, how can I help you?',
-      isUser: false,
-      type: 'message'
-    }
-  ]);
+  const [checkpointId, setCheckpointId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [messagesByThread, setMessagesByThread] = useState<
+    Record<string, Message[]>
+  >({});
   const [currentMessage, setCurrentMessage] = useState("");
-  const [checkpointId, setCheckpointId] = useState(null);
 
-   const handleSubmit = async (e) => {
+  const currentMessages = activeThreadId
+    ? messagesByThread[activeThreadId] || []
+    : [];
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentMessage.trim()) {
-      // First add the user message to the chat
-      const newMessageId = messages.length > 0 ? Math.max(...messages.map(msg => msg.id)) + 1 : 1;
+    if (!currentMessage.trim() || !activeThreadId) return;
 
-      setMessages(prev => [
+    const threadMessages = messagesByThread[activeThreadId] || [];
+    const newMessageId =
+      threadMessages.length > 0
+        ? Math.max(...threadMessages.map((msg) => msg.id)) + 1
+        : 1;
+
+    const userMessage: Message = {
+      id: newMessageId,
+      content: currentMessage,
+      isUser: true,
+      type: "message",
+    };
+
+    setMessagesByThread((prev) => ({
+      ...prev,
+      [activeThreadId]: [...(prev[activeThreadId] || []), userMessage],
+    }));
+
+    const userInput = currentMessage;
+    setCurrentMessage("");
+
+    try {
+      const aiResponseId = newMessageId + 1;
+
+      // Add placeholder bot message
+
+
+      setMessagesByThread((prev) => ({
         ...prev,
-        {
-          id: newMessageId,
-          content: currentMessage,
-          isUser: true,
-          type: 'message'
-        }
-      ]);
-
-      const userInput = currentMessage;
-      setCurrentMessage(""); // Clear input field immediately
-
-      try {
-        // Create AI response placeholder
-        const aiResponseId = newMessageId + 1;
-        setMessages(prev => [
-          ...prev,
+        [activeThreadId]: [
+          ...(prev[activeThreadId] || []),
           {
             id: aiResponseId,
             content: "",
             isUser: false,
-            type: 'message',
+            type: "message",
             isLoading: true,
-            searchInfo: {
-              stages: [],
-              query: "",
-              urls: []
-            }
-          }
-        ]);
+            searchInfo: { stages: [], query: "", urls: [] },
+          },
+        ],
+      }));
 
-        // Create URL with checkpoint ID if it exists
-        let url = `https://myapp-1-0-wywe.onrender.com/chat_stream/${encodeURIComponent(userInput)}`;
-        if (checkpointId) {
-          url += `?checkpoint_id=${encodeURIComponent(checkpointId)}`;
-        }
+      let url = `http://127.0.0.1:8000/chat_stream/${encodeURIComponent(
+        userInput
+      )}`;
+      if (checkpointId)
+        url += `?checkpoint_id=${encodeURIComponent(checkpointId)}`;
 
-        // Connect to SSE endpoint using EventSource
-        const eventSource = new EventSource(url);
-        let streamedContent = "";
-        let searchData = null;
-        let hasReceivedContent = false;
+      const eventSource = new EventSource(url);
+      let streamedContent = "";
+      let searchData: any = null;
 
-        // Process incoming messages
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
 
-            if (data.type === 'checkpoint') {
-              // Store the checkpoint ID for future requests
-              setCheckpointId(data.checkpoint_id);
-            }
-            else if (data.type === 'content') {
-              streamedContent += data.content;
-              hasReceivedContent = true;
+          setMessagesByThread((prev) => {
+            const updated = [...(prev[activeThreadId] || [])];
+            const idx = updated.findIndex((msg) => msg.id === aiResponseId);
 
-              // Update message with accumulated content
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === aiResponseId
-                    ? { ...msg, content: streamedContent, isLoading: false }
-                    : msg
-                )
-              );
-            }
-            else if (data.type === 'search_start') {
-              // Create search info with 'searching' stage
-              const newSearchInfo = {
-                stages: ['searching'],
-                query: data.query,
-                urls: []
-              };
-              searchData = newSearchInfo;
-
-              // Update the AI message with search info
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === aiResponseId
-                    ? { ...msg, content: streamedContent, searchInfo: newSearchInfo, isLoading: false }
-                    : msg
-                )
-              );
-            }
-            else if (data.type === 'search_results') {
-              try {
-                // Parse URLs from search results
-                const urls = typeof data.urls === 'string' ? JSON.parse(data.urls) : data.urls;
-
-                // Update search info to add 'reading' stage (don't replace 'searching')
-                const newSearchInfo = {
-                  stages: searchData ? [...searchData.stages, 'reading'] : ['reading'],
+            if (idx !== -1) {
+              if (data.type === "checkpoint") {
+                setCheckpointId(data.checkpoint_id);
+              } else if (data.type === "content") {
+                streamedContent += data.content;
+                updated[idx] = {
+                  ...updated[idx],
+                  content: streamedContent,
+                  isLoading: false,
+                };
+              } else if (data.type === "search_start") {
+                searchData = { stages: ["searching"], query: data.query, urls: [] };
+                updated[idx] = {
+                  ...updated[idx],
+                  content: streamedContent,
+                  searchInfo: searchData,
+                  isLoading: false,
+                };
+              } else if (data.type === "search_results") {
+                const urls =
+                  typeof data.urls === "string" ? JSON.parse(data.urls) : data.urls;
+                searchData = {
+                  stages: [...(searchData?.stages || []), "reading"],
                   query: searchData?.query || "",
-                  urls: urls
+                  urls,
                 };
-                searchData = newSearchInfo;
-
-                // Update the AI message with search info
-                setMessages(prev =>
-                  prev.map(msg =>
-                    msg.id === aiResponseId
-                      ? { ...msg, content: streamedContent, searchInfo: newSearchInfo, isLoading: false }
-                      : msg
-                  )
-                );
-              } catch (err) {
-                console.error("Error parsing search results:", err);
+                updated[idx] = {
+                  ...updated[idx],
+                  content: streamedContent,
+                  searchInfo: searchData,
+                  isLoading: false,
+                };
+              } else if (data.type === "search_error") {
+                searchData = {
+                  stages: [...(searchData?.stages || []), "error"],
+                  query: searchData?.query || "",
+                  error: data.error,
+                  urls: [],
+                };
+                updated[idx] = {
+                  ...updated[idx],
+                  content: streamedContent,
+                  searchInfo: searchData,
+                  isLoading: false,
+                };
+              } else if (data.type === "end") {
+                if (searchData) {
+                  updated[idx] = {
+                    ...updated[idx],
+                    searchInfo: {
+                      ...searchData,
+                      stages: [...searchData.stages, "writing"],
+                    },
+                    isLoading: false,
+                  };
+                }
+                eventSource.close();
               }
             }
-            else if (data.type === 'search_error') {
-              // Handle search error
-              const newSearchInfo = {
-                stages: searchData ? [...searchData.stages, 'error'] : ['error'],
-                query: searchData?.query || "",
-                error: data.error,
-                urls: []
-              };
-              searchData = newSearchInfo;
 
-              setMessages(prev =>
-                prev.map(msg =>
-                  msg.id === aiResponseId
-                    ? { ...msg, content: streamedContent, searchInfo: newSearchInfo, isLoading: false }
-                    : msg
-                )
-              );
-            }
-            else if (data.type === 'end') {
-              // When stream ends, add 'writing' stage if we had search info
-              if (searchData) {
-                const finalSearchInfo = {
-                  ...searchData,
-                  stages: [...searchData.stages, 'writing']
-                };
+            return { ...prev, [activeThreadId]: updated };
+          });
+        } catch (error) {
+          console.error("Error parsing event data:", error, event.data);
+        }
+      };
 
-                setMessages(prev =>
-                  prev.map(msg =>
-                    msg.id === aiResponseId
-                      ? { ...msg, searchInfo: finalSearchInfo, isLoading: false }
-                      : msg
-                  )
-                );
-              }
-
-              eventSource.close();
-            }
-          } catch (error) {
-            console.error("Error parsing event data:", error, event.data);
-          }
-        };
-
-        // Handle errors
-        eventSource.onerror = (error) => {
-          console.error("EventSource error:", error);
-          eventSource.close();
-
-          // Only update with error if we don't have content yet
-          if (!streamedContent) {
-            setMessages(prev =>
-              prev.map(msg =>
-                msg.id === aiResponseId
-                  ? { ...msg, content: "Sorry, there was an error processing your request.", isLoading: false }
-                  : msg
-              )
-            );
-          }
-        };
-
-        // Listen for end event
-        eventSource.addEventListener('end', () => {
-          eventSource.close();
-        });
-      } catch (error) {
-        console.error("Error setting up EventSource:", error);
-        setMessages(prev => [
-          ...prev,
-          {
-            id: newMessageId + 1,
-            content: "Sorry, there was an error connecting to the server.",
-            isUser: false,
-            type: 'message',
-            isLoading: false
-          }
-        ]);
-      }
+      eventSource.onerror = (error) => {
+        console.error("EventSource error:", error);
+        eventSource.close();
+      };
+    } catch (error) {
+      console.error("Error setting up EventSource:", error);
     }
   };
 
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/conversations")
+      .then((res) => res.json())
+      .then((data) => {
+        setConversations(data);
+        if (data.length > 0) {
+          setActiveThreadId(data[0].threadId);
+          setMessagesByThread((prev) => ({
+            ...prev,
+            [data[0].threadId]: [
+              {
+                id: 1,
+                content: "Hi there, how can I help you?",
+                isUser: false,
+                type: "message",
+              },
+            ],
+          }));
+        }
+      })
+      .catch((err) => console.error("Error fetching conversations:", err));
+  }, []);
+
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-[#F8F7FB] to-[#ECEAF5] px-4 py-10">
-      {/* Main Chat Window */}
-      <div className="w-full max-w-5xl flex flex-col h-[90vh] rounded-2xl bg-white/80 backdrop-blur-md border border-gray-200/70 shadow-xl overflow-hidden">
+    <div className="flex min-h-screen bg-gradient-to-br from-[#F8F7FB] to-[#ECEAF5]">
+      {/* Sidebar */}
+      <div className="w-[20%] h-[90vh] rounded-r-2xl border-r my-6 border-gray-200 bg-white/70 shadow-md">
+        <Sidebar
+          conversations={conversations}
+          activeThreadId={activeThreadId}
+          onSelectThread={(threadId) => setActiveThreadId(threadId)}
+          onNewConversation={(newConv) => {
+            setConversations((prev) => [...prev, newConv]);
+            setActiveThreadId(newConv.threadId);
+            setMessagesByThread((prev) => ({
+              ...prev,
+              [newConv.threadId]: [
+                {
+                  id: 1,
+                  content: "Hi there, how can I help you?",
+                  isUser: false,
+                  type: "message",
+                },
+              ],
+            }));
+          }}
+        />
+      </div>
+
+      {/* Chat Window */}
+      <div className="w-[80%] flex flex-col h-[90vh] m-6 rounded-2xl bg-white/80 backdrop-blur-md border border-gray-200/70 shadow-xl overflow-hidden">
         <Header />
-        <MessageArea messages={messages} />
+        <MessageArea messages={currentMessages} />
         <InputBar
           currentMessage={currentMessage}
           setCurrentMessage={setCurrentMessage}
