@@ -65,7 +65,7 @@ const InputBar: React.FC<Props> = ({ currentMessage, setCurrentMessage, onSubmit
         <button
           type="submit"
           title="Send"
-          className="bg-gradient-to-r sm:mr-0 mr-4 from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-full p-3 ml-2 shadow-md transition-all duration-200 group"
+          className="bg-gradient-to-r sm:mr-0 mr-4 cursor-pointer from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-full p-3 ml-2 shadow-md transition-all duration-200 group"
         >
           <Send className="w-6 h-6 text-white transform rotate-45 group-hover:scale-110 transition-transform duration-200" />
         </button>
