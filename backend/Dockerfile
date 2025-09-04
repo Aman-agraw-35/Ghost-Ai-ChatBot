@@ -6,7 +6,9 @@ WORKDIR /app
 # Copy requirements file
 COPY requirements.txt .
 
-# Install dependencies
+# Install dependencies:
+# 1) install anything listed in requirements.txt
+# 2) then install additional packages separately (as you requested)
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir \
         langchain \
@@ -16,15 +18,17 @@ RUN pip install --no-cache-dir -r requirements.txt && \
         langchain-google-genai \
         tavily-python \
         fastapi \
-        uvicorn[standard] \
+        "uvicorn[standard]" \
         python-dotenv \
-        starlette
+        starlette \
+        sqlalchemy
 
 # Copy application code
 COPY . .
 
-# Expose port
+# Expose port (documentation / readability)
 EXPOSE 8000
 
 # Command to run the application
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# - uses PORT env var if present, otherwise 8000
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}"]
