@@ -11,6 +11,7 @@ from fastapi import FastAPI, Query, Depends, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import json
+from fastapi import status
 from uuid import uuid4
 from langgraph.checkpoint.memory import MemorySaver
 from datetime import datetime
@@ -373,5 +374,23 @@ def update_conversation(thread_id: str, title: str):
             "title": conv.title,
             "createdAt": conv.createdAt.isoformat() if conv.createdAt else None,
         }
+    finally:
+        session.close()
+
+@app.delete("/conversations/{thread_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_conversation(thread_id: str):
+    session = SessionLocal()
+    try:
+        conv = session.query(Conversation).filter(Conversation.threadId == thread_id).first()
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        # Delete all related messages first
+        session.query(Message).filter(Message.threadId == thread_id).delete()
+
+        # Delete the conversation itself
+        session.delete(conv)
+        session.commit()
+        return JSONResponse(content={"detail": "Conversation deleted successfully"}, status_code=200)
     finally:
         session.close()

@@ -34,10 +34,14 @@ const Home = () => {
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [messagesByThread, setMessagesByThread] = useState<Record<string, Message[]>>({});
+  const [messagesByThread, setMessagesByThread] = useState<
+    Record<string, Message[]>
+  >({});
   const [currentMessage, setCurrentMessage] = useState("");
 
-  const currentMessages = activeThreadId ? messagesByThread[activeThreadId] || [] : [];
+  const currentMessages = activeThreadId
+    ? messagesByThread[activeThreadId] || []
+    : [];
 
   // fetch conversations list
   const fetchConversations = useCallback(async () => {
@@ -53,8 +57,11 @@ const Home = () => {
 
   // fetch messages for a thread
   const fetchMessagesForThread = useCallback(async (threadId: string) => {
+    if (!threadId) return;
     try {
-      const res = await fetch(`${API_BASE}/messages/${encodeURIComponent(threadId)}`);
+      const res = await fetch(
+        `${API_BASE}/messages/${encodeURIComponent(threadId)}`
+      );
       if (!res.ok) throw new Error("Failed to fetch messages for thread");
       const data = await res.json();
       const mapped: Message[] = data.map((m: any) => ({
@@ -63,13 +70,18 @@ const Home = () => {
         isUser: !!m.isUser,
         type: "message",
       }));
-      setMessagesByThread(prev => ({ ...prev, [threadId]: mapped }));
+      setMessagesByThread((prev) => ({ ...prev, [threadId]: mapped }));
     } catch (err) {
       console.error("Error fetching messages for thread:", err);
-      setMessagesByThread(prev => ({
+      setMessagesByThread((prev) => ({
         ...prev,
         [threadId]: prev[threadId] ?? [
-          { id: 1, content: "Hi there, how can I help you?", isUser: false, type: "message" },
+          {
+            id: 1,
+            content: "Hi there, how can I help you?",
+            isUser: false,
+            type: "message",
+          },
         ],
       }));
     }
@@ -90,22 +102,38 @@ const Home = () => {
     }
   }, [conversations, activeThreadId, fetchMessagesForThread]);
 
-  const handleSelectThread = async (threadId: string) => {
+  // handleSelectThread now gracefully handles falsy threadId (clearing selection)
+  const handleSelectThread = async (threadId: string | null) => {
+    if (!threadId) {
+      setActiveThreadId(null);
+      setCheckpointId(null);
+      return;
+    }
     setActiveThreadId(threadId);
     setCheckpointId(threadId);
     await fetchMessagesForThread(threadId);
   };
 
   // helper to update assistant placeholder (content/searchInfo) for a given thread and ai id
-  function updateAssistantMessage(threadId: string, aiId: number, patch: Partial<Message>) {
-    setMessagesByThread(prev => {
+  function updateAssistantMessage(
+    threadId: string,
+    aiId: number,
+    patch: Partial<Message>
+  ) {
+    setMessagesByThread((prev) => {
       const updated = [...(prev[threadId] || [])];
-      const idx = updated.findIndex(m => m.id === aiId && !m.isUser);
+      const idx = updated.findIndex((m) => m.id === aiId && !m.isUser);
       if (idx !== -1) {
         updated[idx] = { ...updated[idx], ...patch };
       } else {
         // append as fallback
-        updated.push({ id: aiId, content: patch.content ?? "", isUser: false, type: "message", ...patch });
+        updated.push({
+          id: aiId,
+          content: patch.content ?? "",
+          isUser: false,
+          type: "message",
+          ...patch,
+        });
       }
       return { ...prev, [threadId]: updated };
     });
@@ -134,30 +162,79 @@ const Home = () => {
           await fetchConversations();
 
           // initialize messages: user + assistant placeholder
-          const initialUserMsg: Message = { id: 1, content: initialMessage, isUser: true, type: "message" };
-          const assistantPlaceholder: Message = { id: aiResponseId, content: "", isUser: false, type: "message", isLoading: true };
-          setMessagesByThread(prev => ({ ...prev, [threadId!]: [initialUserMsg, assistantPlaceholder] }));
+          const initialUserMsg: Message = {
+            id: 1,
+            content: initialMessage,
+            isUser: true,
+            type: "message",
+          };
+          const assistantPlaceholder: Message = {
+            id: aiResponseId,
+            content: "",
+            isUser: false,
+            type: "message",
+            isLoading: true,
+          };
+          setMessagesByThread((prev) => ({
+            ...prev,
+            [threadId!]: [initialUserMsg, assistantPlaceholder],
+          }));
         } else if (data.type === "content") {
           if (!threadId) return; // wait for checkpoint
           const chunk = data.content;
           streamedContent += chunk;
-          updateAssistantMessage(threadId, aiResponseId, { content: streamedContent, isLoading: false, searchInfo: searchData || undefined });
+          updateAssistantMessage(threadId, aiResponseId, {
+            content: streamedContent,
+            isLoading: false,
+            searchInfo: searchData || undefined,
+          });
         } else if (data.type === "search_start") {
           // Mark searching stage
           searchData = { stages: ["searching"], query: data.query, urls: [] };
-          if (threadId) updateAssistantMessage(threadId, aiResponseId, { searchInfo: searchData, isLoading: false });
+          if (threadId)
+            updateAssistantMessage(threadId, aiResponseId, {
+              searchInfo: searchData,
+              isLoading: false,
+            });
         } else if (data.type === "search_results") {
           // data.urls expected as array
-          const urls: string[] = Array.isArray(data.urls) ? data.urls : (typeof data.urls === "string" ? JSON.parse(data.urls) : []);
-          searchData = { stages: [...(searchData?.stages || []), "reading"], query: searchData?.query || "", urls };
-          if (threadId) updateAssistantMessage(threadId, aiResponseId, { searchInfo: searchData, isLoading: false });
+          const urls: string[] = Array.isArray(data.urls)
+            ? data.urls
+            : typeof data.urls === "string"
+            ? JSON.parse(data.urls)
+            : [];
+          searchData = {
+            stages: [...(searchData?.stages || []), "reading"],
+            query: searchData?.query || "",
+            urls,
+          };
+          if (threadId)
+            updateAssistantMessage(threadId, aiResponseId, {
+              searchInfo: searchData,
+              isLoading: false,
+            });
         } else if (data.type === "search_error") {
-          searchData = { stages: [...(searchData?.stages || []), "error"], query: searchData?.query || "", error: data.error, urls: [] };
-          if (threadId) updateAssistantMessage(threadId, aiResponseId, { searchInfo: searchData, isLoading: false });
+          searchData = {
+            stages: [...(searchData?.stages || []), "error"],
+            query: searchData?.query || "",
+            error: data.error,
+            urls: [],
+          };
+          if (threadId)
+            updateAssistantMessage(threadId, aiResponseId, {
+              searchInfo: searchData,
+              isLoading: false,
+            });
         } else if (data.type === "end") {
           if (threadId && searchData) {
-            searchData = { ...searchData, stages: [...(searchData.stages || []), "writing"] };
-            updateAssistantMessage(threadId, aiResponseId, { searchInfo: searchData, isLoading: false });
+            searchData = {
+              ...searchData,
+              stages: [...(searchData.stages || []), "writing"],
+            };
+            updateAssistantMessage(threadId, aiResponseId, {
+              searchInfo: searchData,
+              isLoading: false,
+            });
           }
           es.close();
           // optional: resync persisted assistant content
@@ -181,13 +258,36 @@ const Home = () => {
     const threadId = activeThreadId;
 
     const threadMessages = messagesByThread[threadId] || [];
-    const newMessageId = threadMessages.length > 0 ? Math.max(...threadMessages.map(m => m.id)) + 1 : 1;
+    const newMessageId =
+      threadMessages.length > 0
+        ? Math.max(...threadMessages.map((m) => m.id)) + 1
+        : 1;
 
-    const userMsg: Message = { id: newMessageId, content: currentMessage, isUser: true, type: "message" };
-    setMessagesByThread(prev => ({ ...prev, [threadId]: [...(prev[threadId] || []), userMsg] }));
+    const userMsg: Message = {
+      id: newMessageId,
+      content: currentMessage,
+      isUser: true,
+      type: "message",
+    };
+    setMessagesByThread((prev) => ({
+      ...prev,
+      [threadId]: [...(prev[threadId] || []), userMsg],
+    }));
 
     const aiResponseId = newMessageId + 1;
-    setMessagesByThread(prev => ({ ...prev, [threadId]: [...(prev[threadId] || []), { id: aiResponseId, content: "", isUser: false, type: "message", isLoading: true }] }));
+    setMessagesByThread((prev) => ({
+      ...prev,
+      [threadId]: [
+        ...(prev[threadId] || []),
+        {
+          id: aiResponseId,
+          content: "",
+          isUser: false,
+          type: "message",
+          isLoading: true,
+        },
+      ],
+    }));
 
     const userInput = currentMessage;
     setCurrentMessage("");
@@ -210,21 +310,53 @@ const Home = () => {
             setCheckpointId(data.checkpoint_id);
           } else if (data.type === "content") {
             streamedContent += data.content;
-            updateAssistantMessage(threadId, aiResponseId, { content: streamedContent, isLoading: false, searchInfo: searchData || undefined });
+            updateAssistantMessage(threadId, aiResponseId, {
+              content: streamedContent,
+              isLoading: false,
+              searchInfo: searchData || undefined,
+            });
           } else if (data.type === "search_start") {
             searchData = { stages: ["searching"], query: data.query, urls: [] };
-            updateAssistantMessage(threadId, aiResponseId, { searchInfo: searchData, isLoading: false });
+            updateAssistantMessage(threadId, aiResponseId, {
+              searchInfo: searchData,
+              isLoading: false,
+            });
           } else if (data.type === "search_results") {
-            const urls: string[] = Array.isArray(data.urls) ? data.urls : (typeof data.urls === "string" ? JSON.parse(data.urls) : []);
-            searchData = { stages: [...(searchData?.stages || []), "reading"], query: searchData?.query || "", urls };
-            updateAssistantMessage(threadId, aiResponseId, { searchInfo: searchData, isLoading: false });
+            const urls: string[] = Array.isArray(data.urls)
+              ? data.urls
+              : typeof data.urls === "string"
+              ? JSON.parse(data.urls)
+              : [];
+            searchData = {
+              stages: [...(searchData?.stages || []), "reading"],
+              query: searchData?.query || "",
+              urls,
+            };
+            updateAssistantMessage(threadId, aiResponseId, {
+              searchInfo: searchData,
+              isLoading: false,
+            });
           } else if (data.type === "search_error") {
-            searchData = { stages: [...(searchData?.stages || []), "error"], query: searchData?.query || "", error: data.error, urls: [] };
-            updateAssistantMessage(threadId, aiResponseId, { searchInfo: searchData, isLoading: false });
+            searchData = {
+              stages: [...(searchData?.stages || []), "error"],
+              query: searchData?.query || "",
+              error: data.error,
+              urls: [],
+            };
+            updateAssistantMessage(threadId, aiResponseId, {
+              searchInfo: searchData,
+              isLoading: false,
+            });
           } else if (data.type === "end") {
             if (searchData) {
-              const final: SearchInfo = { ...searchData, stages: [...(searchData.stages || []), "writing"] };
-              updateAssistantMessage(threadId, aiResponseId, { searchInfo: final, isLoading: false });
+              const final: SearchInfo = {
+                ...searchData,
+                stages: [...(searchData.stages || []), "writing"],
+              };
+              updateAssistantMessage(threadId, aiResponseId, {
+                searchInfo: final,
+                isLoading: false,
+              });
             }
             eventSource.close();
             fetchMessagesForThread(threadId); // sync persisted messages
@@ -246,7 +378,7 @@ const Home = () => {
   // Sidebar new conversation: either provided conv object or create via SSE
   const handleSidebarNewConversation = async (maybeConv?: Conversation) => {
     if (maybeConv && maybeConv.threadId) {
-      setConversations(prev => [maybeConv, ...prev]);
+      setConversations((prev) => [maybeConv, ...prev]);
       setActiveThreadId(maybeConv.threadId);
       setCheckpointId(maybeConv.threadId);
       await fetchMessagesForThread(maybeConv.threadId);
@@ -262,8 +394,9 @@ const Home = () => {
         <Sidebar
           conversations={conversations}
           activeThreadId={activeThreadId}
-          onSelectThread={(threadId) => handleSelectThread(threadId)}
-          onNewConversation={(conv?: Conversation) => handleSidebarNewConversation(conv)}
+          onSelectThread={handleSelectThread}
+          onNewConversation={(conv) => handleSidebarNewConversation(conv)}
+          setConversations={setConversations}
         />
       </div>
 
