@@ -28,7 +28,7 @@ interface Conversation {
   createdAt: string;
 }
 
-const API_BASE = "https://myapp-1-0-wywe.onrender.com:8000";
+const API_BASE = "https://myapp-1-0-wywe.onrender.com";
 
 const Home = () => {
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
