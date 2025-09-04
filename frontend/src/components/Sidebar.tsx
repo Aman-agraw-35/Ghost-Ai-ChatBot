@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { MessageSquare, Clock, Menu, X, Plus } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { MessageSquare, Clock, Menu, X, Plus, Search, XCircle } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
 interface Conversation {
@@ -14,7 +14,7 @@ interface SidebarProps {
   conversations: Conversation[];
   onSelectThread: (threadId: string) => void;
   activeThreadId: string | null;
-  onNewConversation: (newConv: Conversation) => void; // 🔥 new prop
+  onNewConversation: (newConv: Conversation) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -24,6 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onNewConversation,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleNewConversation = async () => {
     const threadId = uuidv4();
@@ -37,11 +38,19 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       onNewConversation(data);
       onSelectThread(data.threadId);
-      setIsOpen(false); // close drawer on mobile
+      setIsOpen(false);
     } catch (err) {
       console.error("Error creating conversation:", err);
     }
   };
+
+  // filter conversations by title
+  const filteredConversations = useMemo(() => {
+    if (!searchTerm.trim()) return conversations;
+    return conversations.filter((c) =>
+      (c.title || "Untitled Chat").toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm, conversations]);
 
   return (
     <>
@@ -49,7 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <button
         aria-label="Toggle conversations sidebar"
         onClick={() => setIsOpen(!isOpen)}
-        className="top-4 md:ml-[35%] ml-[25%] mt-2 z-50 p-2  bg-white/70  backdrop-blur-md shadow-md lg:hidden"
+        className="top-4 md:ml-[35%] ml-[25%] mt-2 z-50 p-2 bg-white/70 backdrop-blur-md shadow-md lg:hidden"
       >
         {isOpen ? (
           <X className="w-5 h-5 text-gray-700" />
@@ -75,7 +84,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             <MessageSquare className="w-5 h-5 text-indigo-600" />
             Conversations
           </h2>
-          {/* New Conversation Button */}
           <button
             onClick={handleNewConversation}
             className="p-2 ml-1 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white shadow-md"
@@ -85,15 +93,37 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
+        {/* Search Box */}
+        <div className="px-4 py-3 border-b border-gray-100">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search conversations..."
+              className="w-full pl-9 pr-9 py-2 rounded-md border placeholder:text-gray-400 text-gray-900 border-gray-200 bg-white/70 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2"
+              >
+                <XCircle className="w-5 h-5 text-gray-400" />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Conversation List */}
         <div className="flex-1 overflow-y-auto custom-scroll">
-          {conversations.length === 0 ? (
+          {filteredConversations.length === 0 ? (
             <div className="text-center text-gray-500 py-10">
-              No conversations yet
+              No conversations found
             </div>
           ) : (
             <ul className="divide-y divide-gray-100">
-              {conversations.map((conv) => (
+              {filteredConversations.map((conv) => (
                 <li
                   key={conv.threadId}
                   onClick={() => {

@@ -155,7 +155,6 @@ async def maybe_update_title(thread_id: str):
         )
 
         try:
-            # llm.invoke is synchronous; run it in a thread so we don't block the event loop.
             title_resp = await asyncio.to_thread(llm.invoke, [HumanMessage(content=title_prompt)])
             raw_title = extract_text(title_resp).strip()
             new_title = sanitize_title(raw_title, max_words=3)
