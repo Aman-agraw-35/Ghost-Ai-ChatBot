@@ -49,7 +49,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <button
         aria-label="Toggle conversations sidebar"
         onClick={() => setIsOpen(!isOpen)}
-        className="top-4 ml-[35%] mt-2 z-50 p-2 rounded-md bg-white/70 rounded-r-2xl backdrop-blur-md shadow-md lg:hidden"
+        className="top-4 md:ml-[35%] ml-[25%] mt-2 z-50 p-2  bg-white/70  backdrop-blur-md shadow-md lg:hidden"
       >
         {isOpen ? (
           <X className="w-5 h-5 text-gray-700" />
@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           bg-white/70 backdrop-blur-xl border border-gray-200 shadow-xl
           flex flex-col z-40
           ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-          w-72 lg:w-[20%]
+          w-72 xl:w-[20%] lg:w-[25%] top-6
         `}
       >
         {/* Header */}
@@ -78,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* New Conversation Button */}
           <button
             onClick={handleNewConversation}
-            className="p-2 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white shadow-md"
+            className="p-2 ml-1 rounded-md bg-indigo-500 hover:bg-indigo-600 text-white shadow-md"
             aria-label="Start new conversation"
           >
             <Plus className="w-4 h-4" />

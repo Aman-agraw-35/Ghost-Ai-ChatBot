@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Smile, Send } from "lucide-react";
+import { Smile, Send , Link } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
 
 const InputBar = ({ currentMessage, setCurrentMessage, onSubmit }) => {
@@ -54,6 +54,15 @@ const InputBar = ({ currentMessage, setCurrentMessage, onSubmit }) => {
           onChange={handleChange}
           className="flex-grow px-4 py-2 bg-transparent focus:outline-none text-gray-700"
         />
+         {/* Link Button */}
+        <button
+          type="button"
+          title="Emoji"
+          onClick={() => {alert("Link feature coming soon!")}}
+          className="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200"
+        >
+          <Link className="w-6 h-6" />
+        </button>
 
         {/* Send Button */}
         <button

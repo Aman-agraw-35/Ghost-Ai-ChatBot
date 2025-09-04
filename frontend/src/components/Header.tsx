@@ -11,14 +11,14 @@ const Header = () => {
             {/* Logo + App name */}
             <div className="flex items-center relative space-x-2">
                 <Ghost className="w-7 h-7 text-white drop-shadow-lg" />
-                <span className="font-bold text-white text-xl tracking-tight">
+                <span className="font-bold text-white md:text-xl tracking-tight">
                     Ghost-AI-Chat
                 </span>
             </div>
 
             {/* Navigation */}
             <nav className="flex items-center space-x-2">
-                {["HOME", "CHAT", "SETTINGS"].map((item, idx) => (
+                {["HOME", "CHAT"].map((item, idx) => (
                     <a
                         key={idx}
                         className={`text-xs px-4 py-2 font-medium rounded-lg transition-all duration-300 cursor-pointer ${

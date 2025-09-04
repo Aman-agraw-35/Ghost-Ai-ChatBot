@@ -11,7 +11,7 @@ const PremiumTypingAnimation = () => {
   );
 };
 
-const SearchStages = ({ searchInfo }) => {
+const SearchStages = ({ searchInfo  }) => {
   if (!searchInfo?.stages?.length) return null;
 
   return (
@@ -98,15 +98,15 @@ const MessageArea = ({ messages }) => {
       className="flex-grow overflow-y-auto bg-[#FAFAF7] border-b border-gray-200"
       style={{ minHeight: 0 }}
     >
-      <div className="max-w-4xl mx-auto p-6">
-        {messages.map((message) => (
+      <div className="w-full  p-6">
+        {messages.slice(1).map((message) => (
           <div
             key={message.id}
             className={`flex ${
               message.isUser ? "justify-end" : "justify-start"
             } mb-5`}
           >
-            <div className="flex flex-col max-w-md">
+            <div className="flex flex-col max-w-lg">
               {/* Search Status */}
               {!message.isUser && message.searchInfo && (
                 <SearchStages searchInfo={message.searchInfo} />
