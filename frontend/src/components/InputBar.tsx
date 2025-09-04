@@ -34,7 +34,7 @@ const InputBar = ({ currentMessage, setCurrentMessage, onSubmit }) => {
   }, [showEmojiPicker]);
 
   return (
-    <form onSubmit={onSubmit} className="p-4 bg-white relative">
+    <form onSubmit={onSubmit} className="sm:p-4 px-3 py-4 bg-white relative">
       <div className="flex items-center bg-[#F9F9F5] rounded-full p-3 shadow-md border border-gray-200">
         {/* Emoji Button */}
         <button
@@ -49,10 +49,10 @@ const InputBar = ({ currentMessage, setCurrentMessage, onSubmit }) => {
         {/* Input */}
         <input
           type="text"
-          placeholder="Type a message master..."
+          placeholder="Type a message here..."
           value={currentMessage}
           onChange={handleChange}
-          className="flex-grow px-4 py-2 bg-transparent focus:outline-none text-gray-700"
+          className="flex-grow sm:px-4 px-1 py-2 bg-transparent focus:outline-none text-gray-700"
         />
          {/* Link Button */}
         <button
@@ -68,9 +68,9 @@ const InputBar = ({ currentMessage, setCurrentMessage, onSubmit }) => {
         <button
           type="submit"
           title="Send"
-          className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-full p-3 ml-2 shadow-md transition-all duration-200 group"
+          className="bg-gradient-to-r sm:mr-0 mr-4  from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-full p-3 ml-2 shadow-md transition-all duration-200 group"
         >
-          <Send className="w-6 h-6 text-white transform rotate-45 group-hover:scale-110 transition-transform duration-200" />
+          <Send className="w-6 h-6  text-white transform rotate-45 group-hover:scale-110 transition-transform duration-200" />
         </button>
       </div>
 
