@@ -36,7 +36,7 @@ interface SidebarProps {
   setConversations?: React.Dispatch<React.SetStateAction<Conversation[]>>;
 }
 
-const API_BASE = "https://myapp-1-0-wywe.onrender.com";
+const API_BASE = "https://ghost-ai-chatbot.onrender.com";
 
 const Sidebar: React.FC<SidebarProps> = ({
   conversations,

@@ -28,11 +28,33 @@ interface Conversation {
   createdAt: string;
 }
 
-const API_BASE = "https://myapp-1-0-wywe.onrender.com";
+interface ApiMessage {
+  id: number;
+  content?: string;
+  isUser?: boolean;
+}
 
-const Home = () => {
+type ApiConversation = Conversation;
+
+type SSECheckpoint = { type: "checkpoint"; checkpoint_id: string };
+type SSEContent = { type: "content"; content: string };
+type SSSearchStart = { type: "search_start"; query: string };
+type SSSearchResults = { type: "search_results"; urls: string[] | string };
+type SSSearchError = { type: "search_error"; error: string };
+type SSEEnd = { type: "end" };
+type SSEData =
+  | SSECheckpoint
+  | SSEContent
+  | SSSearchStart
+  | SSSearchResults
+  | SSSearchError
+  | SSEEnd;
+
+const API_BASE = "https://ghost-ai-chatbot.onrender.com";
+
+const Home: React.FC = () => {
   const [checkpointId, setCheckpointId] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<ApiConversation[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messagesByThread, setMessagesByThread] = useState<
     Record<string, Message[]>
@@ -43,19 +65,17 @@ const Home = () => {
     ? messagesByThread[activeThreadId] || []
     : [];
 
-  // fetch conversations list
   const fetchConversations = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/conversations`);
       if (!res.ok) throw new Error("Failed to fetch conversations");
-      const data = await res.json();
+      const data = (await res.json()) as ApiConversation[];
       setConversations(data);
     } catch (err) {
       console.error("Error fetching conversations:", err);
     }
   }, []);
 
-  // fetch messages for a thread
   const fetchMessagesForThread = useCallback(async (threadId: string) => {
     if (!threadId) return;
     try {
@@ -63,8 +83,8 @@ const Home = () => {
         `${API_BASE}/messages/${encodeURIComponent(threadId)}`
       );
       if (!res.ok) throw new Error("Failed to fetch messages for thread");
-      const data = await res.json();
-      const mapped: Message[] = data.map((m: any) => ({
+      const data = (await res.json()) as ApiMessage[];
+      const mapped: Message[] = data.map((m) => ({
         id: m.id,
         content: m.content ?? "",
         isUser: !!m.isUser,
@@ -75,14 +95,15 @@ const Home = () => {
       console.error("Error fetching messages for thread:", err);
       setMessagesByThread((prev) => ({
         ...prev,
-        [threadId]: prev[threadId] ?? [
-          {
-            id: 1,
-            content: "Hi there, how can I help you?",
-            isUser: false,
-            type: "message",
-          },
-        ],
+        [threadId]:
+          prev[threadId] ?? [
+            {
+              id: 1,
+              content: "Hi there, how can I help you?",
+              isUser: false,
+              type: "message",
+            },
+          ],
       }));
     }
   }, []);
@@ -102,7 +123,6 @@ const Home = () => {
     }
   }, [conversations, activeThreadId, fetchMessagesForThread]);
 
-  // handleSelectThread now gracefully handles falsy threadId (clearing selection)
   const handleSelectThread = async (threadId: string | null) => {
     if (!threadId) {
       setActiveThreadId(null);
@@ -114,7 +134,6 @@ const Home = () => {
     await fetchMessagesForThread(threadId);
   };
 
-  // helper to update assistant placeholder (content/searchInfo) for a given thread and ai id
   function updateAssistantMessage(
     threadId: string,
     aiId: number,
@@ -126,7 +145,6 @@ const Home = () => {
       if (idx !== -1) {
         updated[idx] = { ...updated[idx], ...patch };
       } else {
-        // append as fallback
         updated.push({
           id: aiId,
           content: patch.content ?? "",
@@ -139,29 +157,22 @@ const Home = () => {
     });
   }
 
-  // Create new conversation via SSE so backend emits checkpoint immediately
   const createNewConversation = async (initialMessage = "New conversation") => {
     const url = `${API_BASE}/chat_stream/${encodeURIComponent(initialMessage)}`;
     const es = new EventSource(url);
-
     let threadId: string | null = null;
-    const aiResponseId = 2; // local IDs for UI placeholders
+    const aiResponseId = 2;
     let searchData: SearchInfo | null = null;
     let streamedContent = "";
 
-    es.onmessage = async (event) => {
+    es.onmessage = async (event: MessageEvent) => {
       try {
-        const data = JSON.parse(event.data);
-
+        const data = JSON.parse(event.data) as SSEData;
         if (data.type === "checkpoint") {
           threadId = data.checkpoint_id;
           setCheckpointId(threadId);
           setActiveThreadId(threadId);
-
-          // refresh conversations so new row appears
           await fetchConversations();
-
-          // initialize messages: user + assistant placeholder
           const initialUserMsg: Message = {
             id: 1,
             content: initialMessage,
@@ -180,7 +191,7 @@ const Home = () => {
             [threadId!]: [initialUserMsg, assistantPlaceholder],
           }));
         } else if (data.type === "content") {
-          if (!threadId) return; // wait for checkpoint
+          if (!threadId) return;
           const chunk = data.content;
           streamedContent += chunk;
           updateAssistantMessage(threadId, aiResponseId, {
@@ -189,7 +200,6 @@ const Home = () => {
             searchInfo: searchData || undefined,
           });
         } else if (data.type === "search_start") {
-          // Mark searching stage
           searchData = { stages: ["searching"], query: data.query, urls: [] };
           if (threadId)
             updateAssistantMessage(threadId, aiResponseId, {
@@ -197,7 +207,6 @@ const Home = () => {
               isLoading: false,
             });
         } else if (data.type === "search_results") {
-          // data.urls expected as array
           const urls: string[] = Array.isArray(data.urls)
             ? data.urls
             : typeof data.urls === "string"
@@ -237,7 +246,6 @@ const Home = () => {
             });
           }
           es.close();
-          // optional: resync persisted assistant content
           if (threadId) await fetchMessagesForThread(threadId);
         }
       } catch (err) {
@@ -251,12 +259,10 @@ const Home = () => {
     };
   };
 
-  // Submit message in existing active conversation (SSE)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentMessage.trim() || !activeThreadId) return;
     const threadId = activeThreadId;
-
     const threadMessages = messagesByThread[threadId] || [];
     const newMessageId =
       threadMessages.length > 0
@@ -294,7 +300,6 @@ const Home = () => {
 
     try {
       let url = `${API_BASE}/chat_stream/${encodeURIComponent(userInput)}`;
-      // ensure we include checkpoint id so backend uses correct thread
       const cp = checkpointId || threadId;
       url += `?checkpoint_id=${encodeURIComponent(cp)}`;
 
@@ -302,10 +307,9 @@ const Home = () => {
       let streamedContent = "";
       let searchData: SearchInfo | null = null;
 
-      eventSource.onmessage = (event) => {
+      eventSource.onmessage = (event: MessageEvent) => {
         try {
-          const data = JSON.parse(event.data);
-
+          const data = JSON.parse(event.data) as SSEData;
           if (data.type === "checkpoint") {
             setCheckpointId(data.checkpoint_id);
           } else if (data.type === "content") {
@@ -359,7 +363,7 @@ const Home = () => {
               });
             }
             eventSource.close();
-            fetchMessagesForThread(threadId); // sync persisted messages
+            fetchMessagesForThread(threadId);
           }
         } catch (err) {
           console.error("Error handling SSE event (submit):", err, event.data);
@@ -375,7 +379,6 @@ const Home = () => {
     }
   };
 
-  // Sidebar new conversation: either provided conv object or create via SSE
   const handleSidebarNewConversation = async (maybeConv?: Conversation) => {
     if (maybeConv && maybeConv.threadId) {
       setConversations((prev) => [maybeConv, ...prev]);
@@ -389,7 +392,6 @@ const Home = () => {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-[#F8F7FB] to-[#ECEAF5]">
-      {/* Sidebar */}
       <div className="xl:w-[20%] lg:w-[25%] w-[15%] h-[90vh] rounded-r-2xl border-r my-6 border-gray-200 bg-white/70 shadow-md">
         <Sidebar
           conversations={conversations}
@@ -400,7 +402,6 @@ const Home = () => {
         />
       </div>
 
-      {/* Chat Window */}
       <div className="xl:w-[80%] lg:w-[75%] w-[90%]  flex flex-col h-[90vh] m-6 rounded-2xl bg-white/80 backdrop-blur-md border border-gray-200/70 shadow-xl overflow-hidden">
         <Header />
         <MessageArea messages={currentMessages} />
