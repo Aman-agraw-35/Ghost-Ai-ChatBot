@@ -21,7 +21,7 @@ const Header = () => {
                 {["HOME", "CHAT"].map((item, idx) => (
                     <a
                         key={idx}
-                        className={`text-xs px-4 py-2 font-medium rounded-lg transition-all duration-300 cursor-pointer ${
+                        className={`text-xs sm:px-4 px-1 py-2 font-medium rounded-lg transition-all duration-300 cursor-pointer ${
                             item === "CHAT"
                                 ? "text-white bg-white/15 shadow-md"
                                 : "text-white/80 hover:text-white hover:bg-white/10"
