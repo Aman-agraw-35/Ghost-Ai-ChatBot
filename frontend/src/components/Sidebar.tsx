@@ -130,7 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <button
         aria-label="Toggle conversations sidebar"
         onClick={() => setIsOpen(!isOpen)}
-        className="top-4 md:ml-[35%] ml-[25%] mt-2 cursor-pointer z-50 p-2 bg-white/70 backdrop-blur-md shadow-md lg:hidden"
+        className="top-4 md:ml-[35%] sm:ml-[25%] ml-[10%] mt-2 cursor-pointer z-50 p-2 bg-white/70 backdrop-blur-md shadow-md lg:hidden"
       >
         {isOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
       </button>

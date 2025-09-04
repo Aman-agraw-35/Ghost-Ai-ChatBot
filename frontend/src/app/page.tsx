@@ -402,7 +402,7 @@ const Home: React.FC = () => {
         />
       </div>
 
-      <div className="xl:w-[80%] lg:w-[75%] w-[90%]  flex flex-col h-[90vh] m-6 rounded-2xl bg-white/80 backdrop-blur-md border border-gray-200/70 shadow-xl overflow-hidden">
+      <div className="xl:w-[80%] lg:w-[75%] sm:w-[90%] w-[95%]  flex flex-col h-[90vh] m-6 rounded-2xl bg-white/80 backdrop-blur-md border border-gray-200/70 shadow-xl overflow-hidden">
         <Header />
         <MessageArea messages={currentMessages} />
         <InputBar

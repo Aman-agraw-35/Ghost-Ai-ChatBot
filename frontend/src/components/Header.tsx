@@ -2,7 +2,7 @@ import { Ghost } from "lucide-react"; // ghost icon
 
 const Header = () => {
     return (
-        <header className="relative flex items-center justify-between px-8 py-5 bg-gradient-to-r bg-gradient-to-r from-green-400 to-[#4A3]
+        <header className="relative flex items-center justify-between sm:px-8 px-1 py-5  bg-gradient-to-r from-green-400 to-[#4A3]
  shadow-lg z-10">
             {/* Subtle overlay texture */}
             <div className="absolute inset-0 bg-[url('/api/placeholder/100/100')] opacity-5 mix-blend-overlay"></div>
@@ -11,7 +11,7 @@ const Header = () => {
             {/* Logo + App name */}
             <div className="flex items-center relative space-x-2">
                 <Ghost className="w-7 h-7 text-white drop-shadow-lg" />
-                <span className="font-bold text-white md:text-xl tracking-tight">
+                <span className="font-bold text-white md:text-xl  text-sm tracking-tight">
                     Ghost-AI-Chat
                 </span>
             </div>
