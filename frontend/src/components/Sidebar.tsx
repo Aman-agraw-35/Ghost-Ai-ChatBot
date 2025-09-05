@@ -9,8 +9,9 @@ import {
   Plus,
   Search,
   XCircle,
-  X
+  X,
 } from "lucide-react";
+import { v4 as uuidv4 } from "uuid";
 
 interface Conversation {
   threadId: string;
@@ -22,20 +23,26 @@ interface SidebarProps {
   conversations: Conversation[];
   onSelectThread: (threadId: string) => void;
   activeThreadId: string | null;
-  /**
-   * Parent handler to create a new conversation.
-   * If called with a Conversation argument, the parent should add it to state.
-   * If called with no args, the parent should create the conversation itself (e.g. via SSE).
-   */
   onNewConversation: (newConv?: Conversation) => void;
-  /**
-   * Setter from parent to update conversations immediately on delete/create.
-   * Pass `setConversations` from Home so Sidebar can update UI without refresh.
-   */
   setConversations?: React.Dispatch<React.SetStateAction<Conversation[]>>;
+  isLoading?: boolean;
 }
 
 const API_BASE = "https://ghost-ai-chatbot.onrender.com";
+
+const SkeletonItem: React.FC<{ isUser?: boolean }> = () => {
+  return (
+    <div className="px-3 py-2 flex items-center justify-between rounded-md mx-2 my-1 transition duration-200">
+      <div className="flex-1">
+        <div className="h-4 w-32 bg-gray-200 rounded-md animate-pulse mb-2" />
+        <div className="h-3 w-20 bg-gray-200 rounded-md animate-pulse" />
+      </div>
+      <div className="ml-3">
+        <div className="h-6 w-6 bg-gray-200 rounded-full animate-pulse" />
+      </div>
+    </div>
+  );
+};
 
 const Sidebar: React.FC<SidebarProps> = ({
   conversations,
@@ -43,61 +50,39 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeThreadId,
   onNewConversation,
   setConversations,
+  isLoading = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  /**
-   * Create new conversation:
-   * - Prefer delegating creation to parent by calling onNewConversation() with no args.
-   * - If you prefer to call backend POST directly from Sidebar, you can implement here,
-   *   but we delegate to avoid the "Failed to create conversation" when POST is missing.
-   */
-  const handleNewConversation = async () => {
-    // Delegate to parent (Home) so it can create via SSE and return the created conv.
+  const handleNewConversation = () => {
     onNewConversation();
     setIsOpen(false);
   };
 
-  /**
-   * Delete conversation
-   * - Optimistic removal: remove from UI immediately using setConversations (if provided)
-   * - Call backend DELETE /conversations/{threadId}
-   * - Revert if delete fails
-   */
   const handleDeleteConversation = async (
     e: React.MouseEvent,
     threadId: string
   ) => {
     e.stopPropagation();
-
-    // Guard: if no setter passed, fallback to delegating to parent to refresh data.
     if (!setConversations) {
-      // best-effort: call backend and then ask parent to reload by calling onNewConversation(undefined)
-      // (Parent should implement a refresh when onNewConversation called with no args OR you can modify parent).
       try {
         const res = await fetch(
           `${API_BASE}/conversations/${encodeURIComponent(threadId)}`,
           { method: "DELETE" }
         );
         if (!res.ok) throw new Error("Delete failed");
-        // ask parent to re-fetch (we use onNewConversation() as a signal; adapt if your Home has a dedicated refresh)
         onNewConversation();
       } catch (err) {
-        console.error("Delete failed and no setter provided:", err);
+        console.error(err);
       }
       return;
     }
-
-    // Optimistic update using setter
     const prev = conversations;
-    setConversations(prevList => prevList.filter(c => c.threadId !== threadId));
-
-    // If deleted conversation was active -> clear selection
+    setConversations((prevList) => prevList.filter((c) => c.threadId !== threadId));
     if (activeThreadId === threadId) {
       onSelectThread("");
     }
-
     try {
       const res = await fetch(
         `${API_BASE}/conversations/${encodeURIComponent(threadId)}`,
@@ -106,27 +91,21 @@ const Sidebar: React.FC<SidebarProps> = ({
       if (!res.ok) {
         throw new Error(`Delete failed: ${res.status}`);
       }
-      // success, UI already updated
     } catch (err) {
-      // revert to previous state
-      console.error("Error deleting conversation:", err);
+      console.error(err);
       setConversations(prev);
     }
   };
 
-  // filter conversations by title
   const filteredConversations = useMemo(() => {
     if (!searchTerm.trim()) return conversations;
-    return conversations.filter(c =>
-      (c.title || "Untitled Chat")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+    return conversations.filter((c) =>
+      (c.title || "Untitled Chat").toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [searchTerm, conversations]);
 
   return (
     <>
-      {/* Mobile Toggle */}
       <button
         aria-label="Toggle conversations sidebar"
         onClick={() => setIsOpen(!isOpen)}
@@ -135,7 +114,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         {isOpen ? <X className="w-5 h-5 text-gray-700" /> : <Menu className="w-5 h-5 text-gray-700" />}
       </button>
 
-      {/* Sidebar */}
       <div
         className={`
           fixed left-0 h-[90vh] rounded-r-2xl
@@ -146,7 +124,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           w-72 xl:w-[20%] lg:w-[25%] top-6
         `}
       >
-        {/* Header */}
         <div className="px-5 py-5 flex justify-between rounded-tr-2xl items-center border-b border-gray-200 bg-gradient-to-r from-green-400 to-green-300">
           <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
             <MessageSquare className="w-5 h-5 text-indigo-600" />
@@ -162,7 +139,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Search */}
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -181,13 +157,19 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Conversation List */}
         <div className="flex-1 overflow-y-auto custom-scroll">
-          {filteredConversations.length === 0 ? (
+          {isLoading ? (
+            <>
+              <SkeletonItem />
+              <SkeletonItem />
+              <SkeletonItem />
+              <SkeletonItem />
+            </>
+          ) : filteredConversations.length === 0 ? (
             <div className="text-center text-gray-500 py-10">No conversations found</div>
           ) : (
             <ul className="divide-y divide-gray-100">
-              {filteredConversations.map(conv => (
+              {filteredConversations.map((conv) => (
                 <li
                   key={conv.threadId}
                   className={`px-3 py-2 flex items-center justify-between rounded-md mx-2 my-1 transition duration-200
@@ -222,7 +204,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Backdrop */}
       {isOpen && <div onClick={() => setIsOpen(false)} className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 lg:hidden" />}
     </>
   );

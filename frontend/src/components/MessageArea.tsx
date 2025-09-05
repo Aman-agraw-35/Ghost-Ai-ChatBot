@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { Search } from "lucide-react";
 
@@ -21,8 +23,20 @@ const PremiumTypingAnimation: React.FC = () => {
   return (
     <div className="flex items-center space-x-1.5">
       <div className="w-2 h-2 bg-gray-400/60 rounded-full animate-pulse" />
-      <div className="w-2 h-2 bg-gray-400/60 rounded-full animate-pulse delay-[200ms]" />
-      <div className="w-2 h-2 bg-gray-400/60 rounded-full animate-pulse delay-[500ms]" />
+      <div className="w-2 h-2 bg-gray-400/60 rounded-full animate-pulse" style={{ animationDelay: "150ms" }} />
+      <div className="w-2 h-2 bg-gray-400/60 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
+    </div>
+  );
+};
+
+const SkeletonMessage: React.FC<{ isUser?: boolean; widths?: string[] }> = ({ isUser, widths = ["w-40", "w-32"] }) => {
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-5`}>
+      <div className="flex flex-col max-w-lg space-y-2 animate-pulse">
+        {widths.map((w, i) => (
+          <div key={i} className={`${w} h-4 rounded-lg ${isUser ? "bg-green-200" : "bg-gray-200"}`} />
+        ))}
+      </div>
     </div>
   );
 };
@@ -89,7 +103,36 @@ const SearchStages: React.FC<{ searchInfo?: SearchInfo }> = ({ searchInfo }) => 
   );
 };
 
-const MessageArea: React.FC<{ messages: Message[] }> = ({ messages }) => {
+const MessageArea: React.FC<{ messages?: Message[]; isLoading?: boolean; onCreateConversation?: () => void }> = ({ messages = [], isLoading = false, onCreateConversation }) => {
+  if (isLoading) {
+    return (
+      <div className="flex-grow overflow-y-auto bg-[#FAFAF7] border-b border-gray-200" style={{ minHeight: 0 }}>
+        <div className="w-full p-6">
+          <SkeletonMessage widths={["w-36", "w-48"]} />
+          <SkeletonMessage isUser widths={["w-44"]} />
+          <SkeletonMessage widths={["w-40", "w-28"]} />
+          <SkeletonMessage isUser widths={["w-32", "w-20"]} />
+        </div>
+      </div>
+    );
+  }
+
+  if (!messages || messages.length <= 1) {
+    return (
+      <div className="flex-grow flex items-center justify-center bg-[#FAFAF7] border-b border-gray-200">
+        <div className="text-center p-6">
+          <div className="text-gray-600 mb-4">No conversation yet</div>
+          <button
+            onClick={() => onCreateConversation && onCreateConversation()}
+            className="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
+          >
+            Start a conversation
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-grow overflow-y-auto bg-[#FAFAF7] border-b border-gray-200" style={{ minHeight: 0 }}>
       <div className="w-full p-6">
@@ -98,13 +141,7 @@ const MessageArea: React.FC<{ messages: Message[] }> = ({ messages }) => {
             <div className="flex flex-col max-w-lg">
               {!message.isUser && message.searchInfo && <SearchStages searchInfo={message.searchInfo} />}
               <div className={`rounded-2xl py-3 px-5 shadow-md transition-all duration-300 ${message.isUser ? "bg-green-500 text-white rounded-br-none" : "bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-800 rounded-bl-none"}`}>
-                {message.isLoading ? (
-                  <PremiumTypingAnimation />
-                ) : message.content ? (
-                  message.content
-                ) : (
-                  <span className="text-gray-400 text-xs italic">Waiting for response...</span>
-                )}
+                {message.isLoading ? <PremiumTypingAnimation /> : message.content ? <div className="whitespace-pre-wrap break-words">{message.content}</div> : <span className="text-gray-400 text-xs italic">Waiting for response...</span>}
               </div>
             </div>
           </div>
