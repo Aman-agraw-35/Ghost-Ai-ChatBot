@@ -78,7 +78,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://ghost-ai-chatbot-1.onrender.com", "http://localhost:3000"],
+    allow_origins=["https://ghost-ai-chatbot-1.onrender.com", "http://localhost:3000" , "https://ghost-ai-chat-bot.vercel.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -394,3 +394,12 @@ def delete_conversation(thread_id: str):
         return JSONResponse(content={"detail": "Conversation deleted successfully"}, status_code=200)
     finally:
         session.close()
+        
+     
+        
+
+
+     
+
+    
+    
