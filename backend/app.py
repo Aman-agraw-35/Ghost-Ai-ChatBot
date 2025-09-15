@@ -78,7 +78,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://ghost-ai-chatbot-1.onrender.com", "http://localhost:3000" , "https://ghost-ai-chat-bot.vercel.app/"],
+    allow_origins=["https://ghost-ai-chatbot-1.onrender.com", "http://localhost:3000" , "https://ghost-ai-chat-bot.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
