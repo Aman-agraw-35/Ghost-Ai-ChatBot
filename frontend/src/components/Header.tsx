@@ -12,7 +12,7 @@ const Header = () => {
             <div className="flex items-center relative space-x-2">
                 <Ghost className="w-7 h-7 text-white drop-shadow-lg" />
                 <span className="font-bold text-white md:text-xl  text-sm tracking-tight">
-                    Ghost-AI-Chat
+                    Ghost-AI
                 </span>
             </div>
 
