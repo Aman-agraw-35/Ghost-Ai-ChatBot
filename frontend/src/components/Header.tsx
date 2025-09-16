@@ -1,4 +1,4 @@
-import { Ghost } from "lucide-react"; // ghost icon
+import { Ghost } from "lucide-react"; 
 
 const Header = () => {
     return (
